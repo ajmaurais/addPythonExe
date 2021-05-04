@@ -8,99 +8,99 @@ AS_MODULE=false
 
 function usage {
     echo -e  "usage: addPythonFiles [--asModule <0/1>]
-									[--binDir <path>]
-									[--pythonExe <path>]
-									[--mainArgs <args>]
-									[-o <output_name>] <python_script_path>"
+                      [--binDir <path>]
+                      [--pythonExe <path>]
+                      [--mainArgs <args>]
+                      [-o <output_name>] <python_script_path>"
     exit
 }
 
 #checks that $1 is not empty or a flag
 function isArg {
-	if [[ $1 == -* ]] || [[ -z "$1" ]] ; then
-		usage
-	fi
+    if [[ $1 == -* ]] || [[ -z "$1" ]] ; then
+        usage
+    fi
 }
 
 #returns the absolute path of a relative reference
 function absPath {
-	if [ -d "$1" ]; then
-		( cd "$1"; echo $(dirs -l +0))
-	else
-		( cd "$(dirname "$1")"; d=$(dirs -l +0); echo "${d%/}/${1##*/}" )
-	fi
+    if [ -d "$1" ]; then
+        ( cd "$1"; echo $(dirs -l +0))
+    else
+        ( cd "$(dirname "$1")"; d=$(dirs -l +0); echo "${d%/}/${1##*/}" )
+    fi
 }
 
 #get args
 while ! [[ -z "$1" ]] ; do
-	case $1 in
-		"--pythonExe" | "-p")
-			shift
-			isArg "$1"
-			PYTHON_EXE=$(absPath "$1");;
-		"--asModule" | "-m")
-			shift
-			isArg "$1"
-			if [ "$1" == "1" ] ; then
-				AS_MODULE=true
-			elif [ "$1" == "0" ] ; then
-				AS_MODULE=false
-			else
-				echo "$1 is an invalid option for --asModule"
-				exit
-			fi ;;
-		"--mainArgs" | "-a")
-			shift
-			isArg "$1"
-			PYTHON_MAIN_ARGS="$1";;
-		"--binDir")
-			shift
-			isArg "$1"
-			BIN_DIR="$1";;
-		"-o")
-			shift
-			isArg "$1"
-			exeName="$1" ;;
-		"-h")
-			usage ;;
-		*)
+    case $1 in
+        "--pythonExe" | "-p")
+            shift
+            isArg "$1"
+            PYTHON_EXE=$(absPath "$1");;
+        "--asModule" | "-m")
+            shift
+            isArg "$1"
+            if [ "$1" == "1" ] ; then
+                AS_MODULE=true
+            elif [ "$1" == "0" ] ; then
+                AS_MODULE=false
+            else
+                echo "$1 is an invalid option for --asModule"
+                exit
+            fi ;;
+        "--mainArgs" | "-a")
+            shift
+            isArg "$1"
+            PYTHON_MAIN_ARGS="$1";;
+        "--binDir")
+            shift
+            isArg "$1"
+            BIN_DIR="$1";;
+        "-o")
+            shift
+            isArg "$1"
+            exeName="$1" ;;
+        "-h")
+            usage ;;
+        *)
             if [[ "$1" == -* ]] ; then
                usage 
             else
                 python_script_path=$( absPath "$1" )
             fi
             shift
-	esac
-	shift
+    esac
+    shift
 done
 
 if [[ -z $python_script_path ]] ; then
-	usage
+    usage
 fi
 
 if [[ -z $exeName ]] ; then
-	exeName=$(basename $python_script_path '.py')
-	ofname=$python_script_path
+    exeName=$(basename $python_script_path '.py')
+    ofname=$python_script_path
 fi
 
 mkdir -p "$BIN_DIR"
 ofname=$BIN_DIR/$exeName
 if $AS_MODULE ; then
-	dirname=$(dirname $(dirname $(absPath $python_script_path)))
-	moduleImportCommand="from $(basename $(dirname $(absPath $python_script_path))) import $exeName"
+    dirname=$(dirname $(dirname $(absPath $python_script_path)))
+    moduleImportCommand="from $(basename $(dirname $(absPath $python_script_path))) import $exeName"
 else
-	dirname=$(absPath $(dirname "$python_script_path"))
-	moduleImportCommand="import $(basename $python_script_path .py)"
+    dirname=$(absPath $(dirname "$python_script_path"))
+    moduleImportCommand="import $(basename $python_script_path .py)"
 fi
 echo "Adding "$ofname
 echo "#!"$PYTHON_EXE > $ofname
 echo -e "\nimport sys" >> $ofname
 echo "sys.path.insert(0, '$dirname')" >> $ofname
 echo "$moduleImportCommand" >> $ofname
-if [[ -z "$PYTHON_MAIN_ARGS" ]] ; then		
-	echo -e "\n$exeName.main()" >> $ofname
+if [[ -z "$PYTHON_MAIN_ARGS" ]] ; then        
+    echo -e "\n$exeName.main()" >> $ofname
 else
-	echo -e "\n$exeName.main('$PYTHON_MAIN_ARGS')" >> $ofname
+    echo -e "\n$exeName.main('$PYTHON_MAIN_ARGS')" >> $ofname
 fi
 
 chmod +x $ofname
